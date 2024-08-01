@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -31,7 +35,16 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  Country country = CountryParser.parseCountryCode('TR');
+  // Country country = CountryParser.parseCountryCode('TR');
+  Country? country;
+  Future<String> fetchCountry() async {
+    final response = await http.get(
+        Uri.parse('http://ip-api.com/json')); // fetch from ip to country code
+    final body = json.decode(response.body);
+    final countryCode = body['countryCode'];
+    return countryCode;
+  }
+
   void showPicker() {
     showCountryPicker(
         context: context,
@@ -57,6 +70,18 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    //Country code comes directly depending on the current country
+    fetchCountry().then((countryCode) {
+      setState(() {
+        //make a parser to country code
+        country = CountryParser.parseCountryCode(countryCode);
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -69,38 +94,45 @@ class _MyHomePageState extends State<MyHomePage> {
       body: Center(
         child: Container(
           padding: const EdgeInsets.all(30),
-          child: TextFormField(
-            cursorColor: Colors.purple,
-            keyboardType: TextInputType.phone,
-            onFieldSubmitted: (phoneNumber) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('+${country.phoneCode}$phoneNumber')));
-            },
-            decoration: InputDecoration(
-                hintText: 'Enter phone number',
-                hintStyle: const TextStyle(color: Colors.black, fontSize: 14),
-                filled: true,
-                focusColor: const Color.fromARGB(255, 224, 218, 224),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(
-                      width: 0,
-                      color: Color.fromARGB(255, 224, 218, 224),
-                    )),
-                fillColor: const Color.fromARGB(255, 224, 218, 224),
-                prefixIcon: GestureDetector(
-                  onTap: () {
-                    showPicker();
+          child: country == null
+              ? const CircularProgressIndicator(
+                  //data is loading state
+                  color: Colors.purple,
+                )
+              : TextFormField(
+                  cursorColor: Colors.purple,
+                  keyboardType: TextInputType.phone,
+                  onFieldSubmitted: (phoneNumber) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('+${country!.phoneCode}$phoneNumber')));
                   },
-                  child: Container(
-                    height: 50,
-                    width: 80,
-                    alignment: Alignment.center,
-                    //countries flay and phone code
-                    child: Text('${country.flagEmoji} +${country.phoneCode}'),
-                  ),
-                )),
-          ),
+                  decoration: InputDecoration(
+                      hintText: 'Enter phone number',
+                      hintStyle:
+                          const TextStyle(color: Colors.black, fontSize: 14),
+                      filled: true,
+                      focusColor: const Color.fromARGB(255, 224, 218, 224),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            width: 0,
+                            color: Color.fromARGB(255, 224, 218, 224),
+                          )),
+                      fillColor: const Color.fromARGB(255, 224, 218, 224),
+                      prefixIcon: GestureDetector(
+                        onTap: () {
+                          showPicker();
+                        },
+                        child: Container(
+                          height: 50,
+                          width: 80,
+                          alignment: Alignment.center,
+                          //countries flay and phone code
+                          child: Text(
+                              '${country!.flagEmoji} +${country!.phoneCode}'),
+                        ),
+                      )),
+                ),
         ),
       ),
     );
